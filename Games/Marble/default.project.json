@@ -1,0 +1,66 @@
+{
+  "name": "Marble",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "Shared": {
+        "$path": "src/ReplicatedStorage/Shared"
+      },
+      "MarbleRemotes": {
+        "$className": "Folder",
+        "AssignMarble": { "$className": "RemoteEvent" },
+        "RequestRespawn": { "$className": "RemoteEvent" },
+        "GoalReached": { "$className": "RemoteEvent" },
+        "CourseInfo": { "$className": "RemoteEvent" },
+        "CheckpointUpdated": { "$className": "RemoteEvent" },
+        "RunComplete": { "$className": "RemoteEvent" },
+        "PlayerInput": { "$className": "RemoteEvent" }
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$path": "src/ServerScriptService"
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "$path": "src/StarterPlayer/StarterPlayerScripts"
+      }
+    },
+    "Workspace": {
+      "$className": "Workspace",
+      "$properties": {
+        "Gravity": 196.2,
+        "StreamingEnabled": false
+      },
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "CanCollide": false,
+          "Transparency": 1,
+          "Size": [1, 1, 1],
+          "Position": [0, -50, 0]
+        }
+      }
+    },
+    "Lighting": {
+      "$className": "Lighting",
+      "$properties": {
+        "Technology": "Voxel",
+        "Ambient": [0.4, 0.45, 0.5],
+        "Brightness": 2,
+        "ClockTime": 14,
+        "FogColor": [0.75, 0.85, 0.95],
+        "FogEnd": 600,
+        "FogStart": 100,
+        "OutdoorAmbient": [0.45, 0.5, 0.55],
+        "GlobalShadows": true,
+        "EnvironmentDiffuseScale": 0.4,
+        "EnvironmentSpecularScale": 0.3
+      }
+    }
+  }
+}
