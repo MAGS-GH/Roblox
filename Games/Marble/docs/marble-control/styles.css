@@ -300,6 +300,7 @@ kbd {
 
 /* Code */
 .code {
+  position: relative;
   margin: 0;
   padding: 1.15rem 1.25rem;
   overflow-x: auto;
@@ -308,6 +309,57 @@ kbd {
   color: #c5d4e0;
   font-size: 0.82rem;
   line-height: 1.55;
+}
+
+.code[data-lang]::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.55rem;
+  right: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.code > code {
+  display: block;
+  color: inherit;
+  font-size: inherit;
+  padding-top: 0.35rem;
+}
+
+/* Luau tokens */
+.tok--keyword {
+  color: #7dd3fc;
+  font-weight: 500;
+}
+
+.tok--builtin {
+  color: var(--accent);
+}
+
+.tok--string {
+  color: #f0c674;
+}
+
+.tok--number {
+  color: var(--accent-2);
+}
+
+.tok--comment {
+  color: #6b7f90;
+  font-style: italic;
+}
+
+.tok--ident {
+  color: #d7e3ec;
+}
+
+.tok--punct {
+  color: #9aafc0;
 }
 
 /* Binds */
