@@ -15,6 +15,7 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local ObstacleEngine = require(script.Parent:WaitForChild("ObstacleEngine"))
 local CourseBuilder = require(script.Parent:WaitForChild("CourseBuilder"))
 
 Players.CharacterAutoLoads = false
@@ -23,7 +24,7 @@ pcall(function()
 	workspace.StreamingEnabled = false
 end)
 
-local _, spawnAttachment, goalTrigger, checkpoints = CourseBuilder.build()
+local courseFolder, spawnAttachment, goalTrigger, checkpoints = CourseBuilder.build()
 local goalPosition = goalTrigger.Position
 local checkpointCount = #checkpoints
 
@@ -32,6 +33,7 @@ local driveForces: { [Player]: VectorForce } = {}
 local finished: { [Player]: boolean } = {}
 local lastCheckpoint: { [Player]: number } = {}
 local runStartedAt: { [Player]: number } = {}
+local killCooldown: { [Player]: number } = {}
 
 -- Seneste input fra klient (world XZ, already normalized-ish)
 local playerMove: { [Player]: Vector3 } = {}
@@ -218,6 +220,7 @@ Players.PlayerRemoving:Connect(function(player)
 	runStartedAt[player] = nil
 	playerMove[player] = nil
 	playerJump[player] = nil
+	killCooldown[player] = nil
 end)
 
 Remotes.RequestRespawn.OnServerEvent:Connect(function(player)
@@ -252,7 +255,6 @@ Remotes.PlayerInput.OnServerEvent:Connect(function(player, moveX, moveZ, jump)
 	end
 end)
 
-local courseFolder = workspace:WaitForChild("MarbleCourse")
 for _, desc in courseFolder:GetDescendants() do
 	if desc:IsA("BasePart") and desc:GetAttribute("CheckpointIndex") then
 		local cpIndex = desc:GetAttribute("CheckpointIndex") :: number
@@ -310,6 +312,22 @@ goalTrigger.Touched:Connect(function(hit)
 	end)
 end)
 
+local function killMarble(marblePart: BasePart)
+	for player, marble in marbles do
+		if marble == marblePart then
+			local now = os.clock()
+			if killCooldown[player] and now - killCooldown[player] < 0.75 then
+				return
+			end
+			killCooldown[player] = now
+			createMarble(player, false)
+			return
+		end
+	end
+end
+
+ObstacleEngine.bindKillParts(courseFolder, killMarble)
+
 RunService.Heartbeat:Connect(function()
 	for player, marble in marbles do
 		if not marble.Parent then
@@ -321,15 +339,12 @@ RunService.Heartbeat:Connect(function()
 			continue
 		end
 
-		-- Bevægelse styres lokalt på klienten (smooth arcade).
-		-- Hold evt. legacy VectorForce slået fra.
 		local forceObj = driveForces[player]
 		if forceObj then
 			forceObj.Enabled = false
 			forceObj.Force = Vector3.zero
 		end
 
-		-- Hop kan stadig komme via remote (backup) — primært håndteres på klient
 		if playerJump[player] then
 			playerJump[player] = false
 			if isGrounded(marble) then

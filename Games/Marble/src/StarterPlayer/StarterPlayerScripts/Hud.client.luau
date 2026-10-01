@@ -96,7 +96,7 @@ makeLabel({
 	Size = UDim2.new(0.95, 0, 0, 36),
 	TextSize = 16,
 	TextColor3 = Color3.fromRGB(240, 245, 255),
-	Text = "Klik i Client-vinduet · WASD · pile · Space · Enter · R",
+	Text = "Rød neon = død · WASD · pile · Space · Enter · R",
 })
 
 local banner = makeLabel({
