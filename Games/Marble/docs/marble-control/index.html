@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Marble Control — sådan virker styringen</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="hero__track" aria-hidden="true"></div>
+    <div class="hero__marble" aria-hidden="true">
+      <div class="hero__marble-core"></div>
+    </div>
+    <div class="hero__copy">
+      <p class="brand">Marble Control</p>
+      <h1>Sådan ruller kuglen</h1>
+      <p class="lede">
+        De vigtigste dele af <code>MarbleControl.client.luau</code> —
+        input, glat fart og kamera på klienten.
+      </p>
+      <a class="cta" href="#flow">Se flowet</a>
+    </div>
+  </header>
+
+  <main>
+    <section id="flow" class="section reveal">
+      <h2>Ét loop pr. frame</h2>
+      <p class="section__intro">
+        Alt kører i <code>RenderStepped</code>. Hvert frame læser vi taster,
+        opdaterer hastighed og flytter kameraet.
+      </p>
+      <ol class="flow">
+        <li><span>1</span> WASD → <strong>rawMove</strong></li>
+        <li><span>2</span> Pile → kamera yaw/pitch</li>
+        <li><span>3</span> rawMove → <strong>smoothMove</strong></li>
+        <li><span>4</span> Lerp fart (accel / brake)</li>
+        <li><span>5</span> Space → hop hvis på jord</li>
+        <li><span>6</span> Kamera følger kuglen</li>
+      </ol>
+      <pre class="code"><code>RunService.RenderStepped:Connect(function(dt)
+  updateRawMoveFromKeys()
+  updateCameraFromKeys(dt)
+  applySmoothDrive(ball, dt)
+  applyCamera(ball, immediate, dt)
+end)</code></pre>
+    </section>
+
+    <section class="section section--split reveal">
+      <div>
+        <h2>WASD er kamera-relativ</h2>
+        <p>
+          <code>W</code> betyder ikke “nord i verden” — det betyder
+          <em>fremad ift. hvor kameraet kigger</em> (kun XZ-planet).
+        </p>
+        <p>
+          Vi bygger en retning: <code>look</code> + <code>right</code>.
+          Diagonal (W+D) normaliseres, så man ikke får √2 fart.
+        </p>
+      </div>
+      <div class="keys" aria-hidden="true">
+        <div class="keys__row"><kbd>W</kbd></div>
+        <div class="keys__row"><kbd>A</kbd><kbd class="keys__active">S</kbd><kbd>D</kbd></div>
+        <p class="keys__caption">→ rawMove i verdensrum</p>
+      </div>
+      <pre class="code code--wide"><code>local look = getCameraFlatLook()
+local right = Vector3.new(-look.Z, 0, look.X)
+local dir = (look * -z) + (right * x)
+if dir.Magnitude > 1 then
+  dir = dir.Unit  -- max længde 1
+end
+rawMove = dir</code></pre>
+    </section>
+
+    <section class="section reveal">
+      <h2>Kernen: smooth velocity</h2>
+      <p class="section__intro">
+        Vi sætter ikke en kraft. Vi sætter <code>AssemblyLinearVelocity</code>
+        direkte og lerper hen imod den ønskede fart — arcade, ikke realistisk fysik.
+      </p>
+      <div class="steps">
+        <article>
+          <h3>1. InputSmooth</h3>
+          <p><code>smoothMove</code> glattes mod <code>rawMove</code>, så start/stop ikke er digitalt.</p>
+        </article>
+        <article>
+          <h3>2. Desired</h3>
+          <p>Ønsket hastighed = retning × <code>MaxSpeed</code>.</p>
+        </article>
+        <article>
+          <h3>3. Accel / Steer</h3>
+          <p>Med input: lerp hen mod desired. Ved fart bruges mindst <code>SteerRate</code> til skarpe sving.</p>
+        </article>
+        <article>
+          <h3>4. Brake</h3>
+          <p>Uden input: lerp mod 0. Aktiv opbremsning — ikke kun friktion.</p>
+        </article>
+      </div>
+      <pre class="code"><code>smoothMove = smoothMove:Lerp(rawMove, expAlpha(InputSmooth, dt))
+desired = smoothMove.Unit * MaxSpeed
+newHorizontal = horizontal:Lerp(desired, expAlpha(AccelRate, dt))
+-- behold vel.Y (hop / gravity)
+ball.AssemblyLinearVelocity = Vector3.new(newHorizontal.X, vel.Y, newHorizontal.Z)</code></pre>
+    </section>
+
+    <section class="section section--accent reveal">
+      <h2>Hvorfor <code>expAlpha</code>?</h2>
+      <p>
+        En fast lerp som <code>0.1</code> hvert frame bliver hurtigere ved 120 fps end ved 30.
+        Formlen <code>1 - e^(-rate × dt)</code> giver samme følelse uanset framerate.
+      </p>
+      <pre class="code"><code>local function expAlpha(rate, dt)
+  return 1 - math.exp(-rate * dt)
+end</code></pre>
+    </section>
+
+    <section class="section section--split reveal">
+      <div>
+        <h2>Hop &amp; jord-check</h2>
+        <p>
+          Space sætter et flag. Hoppet sker i loopet, og kun hvis
+          <code>isGrounded</code> finder gulv med raycast under kuglen.
+        </p>
+        <p>
+          Vi rører kun Y-hastigheden — XZ fra kørslen bevares.
+        </p>
+      </div>
+      <pre class="code"><code>if not isGrounded(ball) then return end
+ball.AssemblyLinearVelocity =
+  Vector3.new(vel.X, Config.Marble.JumpSpeed, vel.Z)</code></pre>
+    </section>
+
+    <section class="section reveal">
+      <h2>Kamera &amp; taster</h2>
+      <ul class="binds">
+        <li><kbd>WASD</kbd> kør</li>
+        <li><kbd>Pile</kbd> orbit-kamera</li>
+        <li><kbd>Space</kbd> hop</li>
+        <li><kbd>Enter</kbd> drej kamera mod mål</li>
+        <li><kbd>R</kbd> respawn (server)</li>
+      </ul>
+      <p class="section__intro">
+        Styringen kører på <strong>klienten</strong>, fordi du er NetworkOwner
+        af din marble — ingen ventetid på server-roundtrip.
+      </p>
+    </section>
+
+    <section class="section section--tune reveal">
+      <h2>Tuning i Config</h2>
+      <p class="section__intro">Tal der ændrer følelsen uden at røre control-scriptet:</p>
+      <dl class="tune">
+        <div><dt>MaxSpeed</dt><dd>Topfart</dd></div>
+        <div><dt>AccelRate</dt><dd>Hvor hurtigt vi når topfart</dd></div>
+        <div><dt>BrakeRate</dt><dd>Opbremsning uden input</dd></div>
+        <div><dt>SteerRate</dt><dd>Drejning mens vi kører</dd></div>
+        <div><dt>InputSmooth</dt><dd>Hvor blødt taster glattes</dd></div>
+        <div><dt>JumpSpeed</dt><dd>Hop-højde (Y-velocity)</dd></div>
+      </dl>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Roblox-VUSK · <code>Games/Marble/.../MarbleControl.client.luau</code></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

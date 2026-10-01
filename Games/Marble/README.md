@@ -43,6 +43,8 @@ rojo build -o Marble.rbxlx
 
 Se **[DEVELOPER.md](./DEVELOPER.md)** for arkitektur, dataflow, remotes og hvordan du udvider banen.
 
+**Styring forklaret (web):** åbn [`docs/marble-control/index.html`](./docs/marble-control/index.html) i browseren.
+
 ## Struktur (kort)
 
 - `ServerScriptService` — bane, forhindringer, marble, checkpoints, mål
